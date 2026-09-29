@@ -1,0 +1,33 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import GoogleSignInButton from "./GoogleSignInButton";
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { user } = await getSession();
+  if (user) redirect("/dashboard");
+
+  const { error } = await searchParams;
+
+  return (
+    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-16">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
+          Sign in
+        </h1>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Use your Google account to access your dashboard and profile.
+        </p>
+      </div>
+      {error && (
+        <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          Sign-in failed. Please try again.
+        </p>
+      )}
+      <GoogleSignInButton />
+    </main>
+  );
+}

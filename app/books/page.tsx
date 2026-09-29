@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,7 @@ type Book = {
 };
 
 export default async function BooksPage() {
+  const supabase = await createClient();
   const { data: books, error } = await supabase
     .from("books")
     .select("id, title, author, year, genre")
