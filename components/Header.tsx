@@ -14,15 +14,17 @@ export default async function Header() {
       <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-6 text-sm">
         <div className="flex items-center gap-5">
           <Link href="/" className="font-semibold text-black dark:text-zinc-50">
-            Hello World
-          </Link>
-          <Link href="/books" className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-            Books
+            CapCity
           </Link>
           {user && (
-            <Link href="/dashboard" className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-              Dashboard
-            </Link>
+            <>
+              <Link href="/create" className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+                Post
+              </Link>
+              <Link href="/dashboard" className="text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+                My stuff
+              </Link>
+            </>
           )}
         </div>
 
