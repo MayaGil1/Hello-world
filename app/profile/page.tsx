@@ -30,6 +30,12 @@ export default async function ProfilePage() {
           submitLabel="Save changes"
         />
       </section>
+
+      <form action="/auth/signout" method="post" className="mt-8">
+        <button className="rounded-full border border-black/[.12] px-5 py-2 text-sm font-medium text-zinc-700 hover:bg-black/[.04] dark:border-white/[.2] dark:text-zinc-300 dark:hover:bg-white/[.06]">
+          Sign out
+        </button>
+      </form>
     </main>
   );
 }

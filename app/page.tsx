@@ -23,20 +23,24 @@ export default async function FeedPage({
   const { supabase, user, profile } = await getSession();
   const theme = themeForDate();
 
-  let query = supabase.from("posts").select(POST_SELECT).limit(30);
-  if (sort === "new") {
-    query = query.order("created_at", { ascending: false });
-  } else if (sort === "top") {
-    query = query.order("score", { ascending: false }).order("created_at", { ascending: false });
-  } else {
-    // Hot: best of the last 3 days, so fresh posts can compete.
+  let query = supabase.from("posts").select(POST_SELECT);
+  if (sort === "top") {
     query = query
-      .gte("created_at", new Date(Date.now() - 3 * DAY).toISOString())
       .order("score", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(30);
+  } else {
+    query = query.order("created_at", { ascending: false }).limit(sort === "hot" ? 100 : 30);
   }
   const { data } = await query;
-  const posts = (data ?? []) as Post[];
+  let posts = (data ?? []) as Post[];
+
+  if (sort === "hot") {
+    // Hot: votes count for more on fresh posts, so new photos can compete but the feed is never empty.
+    const hotness = (p: Post) =>
+      (p.score + 1) / Math.pow((Date.now() - new Date(p.created_at).getTime()) / 3_600_000 + 2, 1.5);
+    posts = posts.sort((a, b) => hotness(b) - hotness(a)).slice(0, 30);
+  }
 
   // Yesterday's best caption, so there's always something to come back and check.
   const { data: winnerRows } = await supabase
@@ -74,6 +78,27 @@ export default async function FeedPage({
           {user ? "Post a photo" : "Sign in to play"}
         </Link>
       </section>
+
+      {!user && (
+        <ol className="mt-4 grid grid-cols-3 gap-2 text-center text-xs text-zinc-600 dark:text-zinc-400">
+          {[
+            ["📸", "Snap something", "Campus, subway, your dorm"],
+            ["✨", "AI writes 5 captions", "Each in a different style"],
+            ["🗳️", "Everyone votes", "Funniest line wins the day"],
+          ].map(([icon, title, detail]) => (
+            <li
+              key={title}
+              className="rounded-xl border border-black/[.08] bg-white px-2 py-3 dark:border-white/[.145] dark:bg-zinc-900"
+            >
+              <div className="text-xl" aria-hidden>
+                {icon}
+              </div>
+              <p className="mt-1 font-semibold text-black dark:text-zinc-50">{title}</p>
+              <p className="mt-0.5 leading-snug">{detail}</p>
+            </li>
+          ))}
+        </ol>
+      )}
 
       {winner && (
         <Link

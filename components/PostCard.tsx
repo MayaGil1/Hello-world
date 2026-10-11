@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ShareButton from "@/components/ShareButton";
 import VoteButtons from "@/components/VoteButtons";
 import { sortCaptions, type Post } from "@/lib/feed";
 
@@ -64,14 +65,19 @@ export default function PostCard({ post, myVotes, signedIn, isMine, limit }: Pro
           </li>
         ))}
       </ol>
-      {limit && captions.length > limit && (
-        <Link
-          href={`/p/${post.id}`}
-          className="block border-t border-black/[.06] px-4 py-3 text-sm font-medium text-zinc-600 hover:bg-black/[.02] dark:border-white/[.08] dark:text-zinc-400"
-        >
-          See all {captions.length} captions →
-        </Link>
-      )}
+      <div className="flex items-center justify-between border-t border-black/[.06] px-2 py-1.5 dark:border-white/[.08]">
+        {limit && captions.length > limit ? (
+          <Link
+            href={`/p/${post.id}`}
+            className="rounded-full px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-black/[.05] dark:text-zinc-400 dark:hover:bg-white/[.08]"
+          >
+            See all {captions.length} captions →
+          </Link>
+        ) : (
+          <span />
+        )}
+        <ShareButton path={`/p/${post.id}`} text={captions[0]?.text ?? "Vote on the funniest caption"} />
+      </div>
     </article>
   );
 }

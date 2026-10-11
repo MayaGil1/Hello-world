@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { generatePost } from "./actions";
 
 const MAX_SIDE = 1600;
+
+// Shown one after another while Gemini works, so a 5-25s wait doesn't feel frozen.
+const PROGRESS_MESSAGES = [
+  "Looking at your photo…",
+  "Writing the chronically online caption…",
+  "Asking a Midwest transplant what they think…",
+  "Consulting the Low Steps…",
+  "Making it deadpan…",
+  "Adding something wholesome…",
+  "Almost there…",
+];
 
 // Shrinks big phone photos and converts them to JPEG so every browser can show them.
 async function toJpeg(file: File): Promise<Blob> {
@@ -25,6 +36,17 @@ export default function CreateForm({ userId, theme }: { userId: string; theme: s
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "generating">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (status !== "generating") return;
+    setStep(0);
+    const timer = setInterval(
+      () => setStep((s) => Math.min(s + 1, PROGRESS_MESSAGES.length - 1)),
+      3000,
+    );
+    return () => clearInterval(timer);
+  }, [status]);
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const picked = event.target.files?.[0];
@@ -78,8 +100,21 @@ export default function CreateForm({ userId, theme }: { userId: string; theme: s
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <label className="flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-black/[.15] bg-white text-zinc-500 hover:border-black/[.3] dark:border-white/[.2] dark:bg-zinc-900">
         {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Selected photo" className="h-full w-full object-contain" />
+          <span className="relative h-full w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="Selected photo" className="h-full w-full object-contain" />
+            {busy && (
+              <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/55 px-6 text-center text-white">
+                <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+                <span className="font-medium" aria-live="polite">
+                  {status === "uploading" ? "Uploading your photo…" : PROGRESS_MESSAGES[step]}
+                </span>
+                {status === "generating" && (
+                  <span className="text-xs text-white/70">This usually takes 5–20 seconds</span>
+                )}
+              </span>
+            )}
+          </span>
         ) : (
           <span className="px-6 text-center">
             Tap to choose a photo

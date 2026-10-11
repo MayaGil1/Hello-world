@@ -16,18 +16,41 @@ export default function VoteButtons({ captionId, score, myVote, signedIn }: Prop
   const [shownScore, setShownScore] = useState(score);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [askToSignIn, setAskToSignIn] = useState(false);
 
   if (!signedIn) {
     return (
-      <Link
-        href="/login"
-        title="Sign in to vote"
-        className="flex shrink-0 flex-col items-center rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-      >
-        <span aria-hidden>▲</span>
-        <span className="font-semibold tabular-nums">{score}</span>
-        <span className="sr-only">Sign in to vote</span>
-      </Link>
+      <div className="relative flex shrink-0 flex-col items-center">
+        <button
+          onClick={() => setAskToSignIn((v) => !v)}
+          aria-label="Upvote (sign in required)"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-sm text-zinc-400 hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+        >
+          ▲
+        </button>
+        <span className="text-sm font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">{score}</span>
+        <button
+          onClick={() => setAskToSignIn((v) => !v)}
+          aria-label="Downvote (sign in required)"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-sm text-zinc-400 hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+        >
+          ▼
+        </button>
+        {askToSignIn && (
+          <div
+            role="dialog"
+            className="absolute left-full top-0 z-10 ml-2 w-44 rounded-xl border border-black/[.08] bg-white p-3 text-xs shadow-lg dark:border-white/[.15] dark:bg-zinc-900"
+          >
+            <p className="text-zinc-700 dark:text-zinc-300">Sign in to vote on captions.</p>
+            <Link
+              href="/login"
+              className="mt-2 inline-block rounded-full bg-foreground px-3 py-1 font-semibold text-background"
+            >
+              Sign in with Google
+            </Link>
+          </div>
+        )}
+      </div>
     );
   }
 
