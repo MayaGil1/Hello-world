@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isEmailAllowed } from "@/lib/access";
 import { hasName, type Profile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,11 @@ export async function GET(request: Request) {
 
   if (error || !data.user) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  }
+
+  if (!(await isEmailAllowed(data.user.email))) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?error=not_allowed`);
   }
 
   const { data: profile } = await supabase

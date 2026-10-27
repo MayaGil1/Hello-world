@@ -24,7 +24,9 @@ export default async function LoginPage({
       </div>
       {error && (
         <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          Sign-in failed. Please try again.
+          {error === "not_allowed"
+            ? "CapCity is invite-only right now, and that email isn't on the list. Try your school account."
+            : "Sign-in failed. Please try again."}
         </p>
       )}
       <GoogleSignInButton />

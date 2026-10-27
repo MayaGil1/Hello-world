@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { buildPrompt, generateCaptions } from "@/lib/gemini";
+import { attachPostToRequest, runCaptionPipeline } from "@/lib/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { themeForDate } from "@/lib/themes";
@@ -43,14 +43,17 @@ export async function generatePost(
 
   const note = rawNote.trim().slice(0, 200) || null;
   const theme = themeForDate();
-  const prompt = buildPrompt(theme, note);
 
   let result;
   try {
-    result = await generateCaptions(
-      { data: await file.arrayBuffer(), mimeType: file.type || "image/jpeg" },
-      prompt,
-    );
+    result = await runCaptionPipeline(admin, {
+      userId: user.id,
+      imagePath,
+      image: { data: await file.arrayBuffer(), mimeType: file.type || "image/jpeg" },
+      theme,
+      note,
+      source: "capcity",
+    });
   } catch (error) {
     console.error(error);
     return { error: "The AI couldn't caption that photo. Try a different one." };
@@ -72,14 +75,17 @@ export async function generatePost(
       post_id: post.id,
       text: caption.text,
       style: caption.style,
-      prompt,
-      model: result.model,
+      prompt: caption.prompt,
+      model: caption.model,
+      prompt_chain_id: caption.prompt_chain_id,
+      generation_request_id: result.requestId,
     })),
   );
   if (captionError) {
     await admin.from("posts").delete().eq("id", post.id);
     return { error: "Could not save the captions." };
   }
+  await attachPostToRequest(admin, result.requestId, post.id);
 
   redirect(`/p/${post.id}?new=1`);
 }
