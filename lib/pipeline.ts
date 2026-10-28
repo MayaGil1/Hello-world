@@ -49,6 +49,8 @@ type RunInput = {
 };
 
 const RETRYABLE = [429, 500, 503];
+const CALL_TIMEOUT_MS = 30_000; // a hung model call must not freeze the whole request
+const ROUNDS = 2; // overloaded models often recover within seconds, so go through the list twice
 
 export async function runCaptionPipeline(db: SupabaseClient, input: RunInput) {
   const started = Date.now();
@@ -179,7 +181,8 @@ function render(template: string, vars: Record<string, string>) {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => vars[key] ?? match);
 }
 
-// Try the step's model, then the other active models from the same provider if it's overloaded.
+// Try the step's model, then the other active models from the same provider if it's overloaded,
+// then the whole list once more after a short pause.
 async function callStep(ctx: Ctx, chainId: number, step: Step, systemPrompt: string, userPrompt: string) {
   const primary = ctx.models.find((m) => m.id === step.llm_model_id);
   if (!primary) throw new Error(`Step ${step.id} uses a model that no longer exists.`);
@@ -188,7 +191,9 @@ async function callStep(ctx: Ctx, chainId: number, step: Step, systemPrompt: str
   if (candidates.length === 0) throw new Error(`No active model for step ${step.id}.`);
 
   let lastError = "";
-  for (const model of candidates) {
+  const attempts = Array.from({ length: ROUNDS }, (_, round) => candidates.map((model) => ({ model, round }))).flat();
+  for (const { model, round } of attempts) {
+    if (round > 0 && model === candidates[0]) await new Promise((resolve) => setTimeout(resolve, 3000));
     const provider = model.llm_providers?.slug;
     const temperature = model.is_temperature_supported ? step.temperature : null;
     const started = Date.now();
@@ -208,7 +213,12 @@ async function callStep(ctx: Ctx, chainId: number, step: Step, systemPrompt: str
         if (!text) error = "Empty response (the photo may have been blocked).";
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      error =
+        e instanceof Error && e.name === "TimeoutError"
+          ? `No response after ${CALL_TIMEOUT_MS / 1000}s`
+          : e instanceof Error
+            ? e.message
+            : String(e);
     }
 
     await ctx.db.from("llm_responses").insert({
@@ -229,6 +239,7 @@ async function callStep(ctx: Ctx, chainId: number, step: Step, systemPrompt: str
     if (text && !error) return { text, model: model.provider_model_id };
     lastError = error ?? "Unknown error";
     if (status !== null && !RETRYABLE.includes(status)) break;
+    if (status === null && error?.startsWith("Provider")) break;
   }
   throw new Error(lastError);
 }
@@ -265,6 +276,7 @@ function callGemini(
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ parts }],

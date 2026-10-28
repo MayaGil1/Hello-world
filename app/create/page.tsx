@@ -2,6 +2,9 @@ import { requireCompleteProfile } from "@/lib/auth";
 import { themeForDate } from "@/lib/themes";
 import CreateForm from "./CreateForm";
 
+// Caption generation runs inside this page's server action; give slow AI calls room to retry.
+export const maxDuration = 300;
+
 export default async function CreatePage() {
   const { user } = await requireCompleteProfile();
   const theme = themeForDate();
